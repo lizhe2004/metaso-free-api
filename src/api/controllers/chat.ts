@@ -257,52 +257,68 @@ async function createCompletion(
 ) {
   return (async () => {
     logger.info(messages);
-
+    const deepThink = model.indexOf("R1") != -1;
+    let answer = null;
     const {
       model: _model,
       content,
       engineType
     } = messagesPrepare(model, messages, tempature);
 
-    // 创建会话
-    const convId = await createConversation(content, _model, engineType, token);
+       
+    if (deepThink){
+      // 请求流
+      const metaToken = await acquireMetaToken(token, swapMode);
+
+
+      const result = await axios.get(`https://metaso.cn/api/searchV2`, {
+        params: {
+          question: content,
+          mode: model,
+          scholarSearchDomain: 'all',
+          url:  'https://metaso.cn/',
+          lang: 'zh',
+          enableMix: 'true',
+          newEngine: 'true',
+          enableImage: 'true',
+          model: 'ds-r1',
+          "metaso-pc": "pc",
+          token: metaToken
+        },
+        headers: {
+          Cookie: generateCookie(token),
+          ...FAKE_HEADERS,
+          Accept: "text/event-stream",
+        },
+        // 300秒超时
+        timeout: 300000,
+        validateStatus: () => true,
+        responseType: "stream",
+      }
+      );
     
-    // 请求流
-    // const metaToken = await acquireMetaToken(token, swapMode);
-    // const result = await axios.get(`https://metaso.cn/api/searchV2`, {
-    //   params: {
-    //     sessionId: convId,
-    //     question: content,
-    //     lang: 'zh',
-    //     mode: _model,
-    //     url: `https://metaso.cn/search/${convId}?newSearch=true&q=${content}`,
-    //     enableMix: 'true',
-    //     scholarSearchDomain: 'all',
-    //     expectedCurrentSessionSearchCount: '1',
-    //     'is-mini-webview': '0',
-    //     token: metaToken
-    //   },
-    //   headers: {
-    //     Cookie: generateCookie(token),
-    //     ...FAKE_HEADERS,
-    //     Accept: "text/event-stream",
-    //   },
-    //   // 300秒超时
-    //   timeout: 300000,
-    //   validateStatus: () => true,
-    //   responseType: "stream",
-    // }
-    // );
+      logger.info("等待接受流式消息");
+      const streamStartTime = util.timestamp();
+      answer = await receiveStream(model, "metaso-iiii", result.data);
+      logger.success(
+        `Stream has completed transfer ${util.timestamp() - streamStartTime}ms`
+      );
+    }
+    else{
+    // 创建会话
+      const convId = await createConversation(content, _model, engineType, token);
+      
+      
+      // 请求流
+      const stream = await requestStream(content, convId, token);
 
-    // 请求流
-    const stream = await requestStream(content, convId, token);
-
-    const streamStartTime = util.timestamp();
-    // 接收流为输出文本
-    const answer = await receiveStream(model, convId, stream);
-    logger.success(
-      `Stream has completed transfer ${util.timestamp() - streamStartTime}ms`
-    );
+      const streamStartTime = util.timestamp();
+      // 接收流为输出文本
+      answer = await receiveStream(model, convId, stream);
+      logger.success(
+        `Stream has completed transfer ${util.timestamp() - streamStartTime}ms`
+      );
+    }
 
     return answer;
   })().catch((err) => {
@@ -340,6 +356,8 @@ async function createCompletionStream(
   tempature = 0.6,
   retryCount = 0
 ) {
+
+  const deepThink = model.indexOf("R1") != -1;
   return (async () => {
     logger.info(messages);
 
@@ -348,46 +366,61 @@ async function createCompletionStream(
       content,
       engineType
     } = messagesPrepare(model, messages, tempature);
+    
+      if (deepThink){
+      // 请求流
+      const metaToken = await acquireMetaToken(token, swapMode);
 
-    // 创建会话
-    const convId = await createConversation(content, _model, engineType, token);
 
-    // // 请求流
-    // const metaToken = await acquireMetaToken(token, swapMode);
-    // const result = await axios.get(`https://metaso.cn/api/searchV2`, {
-    //   params: {
-    //     sessionId: convId,
-    //     question: content,
-    //     lang: 'zh',
-    //     mode: _model,
-    //     url: `https://metaso.cn/search/${convId}?newSearch=true&q=${content}`,
-    //     enableMix: 'true',
-    //     scholarSearchDomain: 'all',
-    //     expectedCurrentSessionSearchCount: '1',
-    //     'is-mini-webview': '0',
-    //     token: metaToken
-    //   },
-    //   headers: {
-    //     Cookie: generateCookie(token),
-    //     ...FAKE_HEADERS,
-    //     Accept: "text/event-stream",
-    //   },
-    //   // 300秒超时
-    //   timeout: 300000,
-    //   validateStatus: () => true,
-    //   responseType: "stream",
-    // }
-    // );
-    // 请求流
-    const stream = await requestStream(content, convId, token);
-
-    const streamStartTime = util.timestamp();
-    // 创建转换流将消息格式转换为gpt兼容格式
-    return createTransStream(model, convId, stream, () => {
-      logger.success(
-        `Stream has completed transfer ${util.timestamp() - streamStartTime}ms`
+      const result = await axios.get(`https://metaso.cn/api/searchV2`, {
+        params: {
+          question: content,
+          mode: model,
+          scholarSearchDomain: 'all',
+          url:  'https://metaso.cn/',
+          lang: 'zh',
+          enableMix: 'true',
+          newEngine: 'true',
+          enableImage: 'true',
+          model: 'ds-r1',
+          "metaso-pc": "pc",
+          token: metaToken
+        },
+        headers: {
+          Cookie: generateCookie(token),
+          ...FAKE_HEADERS,
+          Accept: "text/event-stream",
+        },
+        // 300秒超时
+        timeout: 300000,
+        validateStatus: () => true,
+        responseType: "stream",
+      }
       );
-    });
+    
+      logger.info("等待接受流式消息");
+      const streamStartTime = util.timestamp();
+      // 创建转换流将消息格式转换为gpt兼容格式
+      return createTransStream(model, "metaso-111", result.data, () => {
+        logger.success(
+          `Stream has completed transfer ${util.timestamp() - streamStartTime}ms`
+        );
+      });
+    }
+    else{
+      // 创建会话
+      const convId = await createConversation(content, _model, engineType, token);
+
+      // 请求流
+      const stream = await requestStream(content, convId, token);
+      const streamStartTime = util.timestamp();
+      // 创建转换流将消息格式转换为gpt兼容格式
+      return createTransStream(model, convId, stream, () => {
+        logger.success(
+          `Stream has completed transfer ${util.timestamp() - streamStartTime}ms`
+        );
+      });
+    }
   })().catch((err) => {
     if (retryCount < MAX_RETRY_COUNT) {
       logger.error(`Stream response error: ${err.message}`);
@@ -553,6 +586,7 @@ function createTransStream(
   stream: any,
   endCallback?: Function
 ) {
+
   // 消息创建时间
   const created = util.unixTimestamp();
   // 创建转换流
@@ -577,6 +611,7 @@ function createTransStream(
     try {
       if (event.type !== "event") return;
       if (event.data == "[DONE]") {
+        logger.info(JSON.stringify(event));
         const data = `data: ${JSON.stringify({
           id: convId,
           model,
@@ -597,6 +632,7 @@ function createTransStream(
         return;
       }
       // 解析JSON
+      logger.info(JSON.stringify(event));
       const result = _.attempt(() => JSON.parse(event.data));
       if (_.isError(result)) {
         if (event.data.indexOf('TOO_MANY_REQUESTS') != -1)
