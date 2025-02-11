@@ -704,7 +704,7 @@ function createTransStream(
           chunk= chunk.replace(regex, (match, capturedNumber) => {
             const extractedNumber = parseInt(capturedNumber, 10);
             if (extractedNumber >= 0 && extractedNumber < searchResult.length) {
-                const content = searchResult[extractedNumber].url;
+                const content = searchResult[extractedNumber-1].link;
   
                 return `[[${extractedNumber}]](${content})`;
             } else {
@@ -733,7 +733,8 @@ function createTransStream(
       }
       else if(result.type == "set-reference"){
         if(model.indexOf("r1")!=-1 || model.indexOf("R1")!=-1){
-          searchResult = result.list;
+          searchResult = result.list.map((item)  =>({"title": item.title,"link": item.link? item.link: item.file_meta? item.file_meta.url: "" }));
+          logger.info(searchResult)
           let chunk = result.list.map((item, index)  => `【检索 ${index + 1}】 [${item.title}]((${item.link}))`).join('\n') +"\n";
           const data = `data: ${JSON.stringify({
             id: convId,
