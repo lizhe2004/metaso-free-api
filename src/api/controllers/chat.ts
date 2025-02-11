@@ -554,6 +554,7 @@ function checkResult(result: AxiosResponse) {
 async function receiveStream(model: string, convId: string, stream: any) {
   return new Promise((resolve, reject) => {
     // 消息初始化
+    let searchResult=[]
     const data = {
       id: convId,
       model,
@@ -580,10 +581,38 @@ async function receiveStream(model: string, convId: string, stream: any) {
             swapMode = !swapMode;
           throw new Error(`Stream response invalid: ${event.data}`);
         }
-        if (result.type == "append-text")
-          data.choices[0].message.content += removeIndexLabel(result.text);
+        if (result.type == "append-text"){ 
+          if(model.indexOf("r1")!=-1 || model.indexOf("R1")!=-1){
+
+            let chunk = result.text
+             
+            const regex = /\[\[(\d+)\]\]/g;
+      
+            chunk= chunk.replace(regex, (match, capturedNumber) => {
+              const extractedNumber = parseInt(capturedNumber, 10);
+              if (extractedNumber >= 0 && extractedNumber < searchResult.length) {
+                  const content = searchResult[extractedNumber-1].link;
+    
+                  return `[[${extractedNumber}]](${content})`;
+              } else {
+                  return match; // 如果索引超出范围，保持原样
+              }
+            });
+            data.choices[0].message.content += chunk;
+          }
+          else{
+            data.choices[0].message.content += removeIndexLabel(result.text);
+          }
+        }
         else if (result.type == "error")
           data.choices[0].message.content += `[${result.code}]${result.msg}`;
+        else if(result.type == "set-reference"){
+          if(model.indexOf("r1")!=-1 || model.indexOf("R1")!=-1){
+            searchResult = result.list.map((item)  =>({"title": item.title,"link": item.link? item.link: item.file_meta? item.file_meta.url: "" }));
+            logger.info(searchResult)
+            data.choices[0].message.content += result.list.map((item, index)  => `【检索 ${index + 1}】 [${item.title}]((${item.link}))`).join('\n') +"\n";
+          }
+        }
       } catch (err) {
         logger.error(err);
         reject(err);
@@ -615,6 +644,7 @@ function createTransStream(
 
   // 消息创建时间
   const created = util.unixTimestamp();
+  let searchResult = [];
   // 创建转换流
   const transStream = new PassThrough();
   !transStream.closed &&
@@ -666,6 +696,26 @@ function createTransStream(
         throw new Error(`Stream response invalid: ${event.data}`);
       }
       if (result.type == "append-text") {
+        let chunk = result.text
+        if(model.indexOf("r1")!=-1 || model.indexOf("R1")!=-1){
+
+          const regex = /\[\[(\d+)\]\]/g;
+    
+          chunk= chunk.replace(regex, (match, capturedNumber) => {
+            const extractedNumber = parseInt(capturedNumber, 10);
+            if (extractedNumber >= 0 && extractedNumber < searchResult.length) {
+                const content = searchResult[extractedNumber].url;
+  
+                return `[[${extractedNumber}]](${content})`;
+            } else {
+                return match; // 如果索引超出范围，保持原样
+            }
+          });
+          
+        }else{
+           chunk = removeIndexLabel(result.text) 
+        }
+
         const data = `data: ${JSON.stringify({
           id: convId,
           model,
@@ -673,13 +723,33 @@ function createTransStream(
           choices: [
             {
               index: 0,
-              delta: { role: "assistant", content: removeIndexLabel(result.text) },
+              delta: { role: "assistant", content:chunk },
               finish_reason: null,
             },
           ],
           created,
         })}\n\n`;
         !transStream.closed && transStream.write(data);
+      }
+      else if(result.type == "set-reference"){
+        if(model.indexOf("r1")!=-1 || model.indexOf("R1")!=-1){
+          searchResult = result.list;
+          let chunk = result.list.map((item, index)  => `【检索 ${index + 1}】 [${item.title}]((${item.link}))`).join('\n') +"\n";
+          const data = `data: ${JSON.stringify({
+            id: convId,
+            model,
+            object: "chat.completion.chunk",
+            choices: [
+              {
+                index: 0,
+                delta: { role: "assistant", content:chunk },
+                finish_reason: null,
+              },
+            ],
+            created,
+          })}\n\n`;
+          !transStream.closed && transStream.write(data);
+        }
       }
       else if (result.type == "error") {
         const data = `data: ${JSON.stringify({
