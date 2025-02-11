@@ -257,16 +257,18 @@ async function createCompletion(
 ) {
   return (async () => {
     logger.info(messages);
-    const deepThink = model.indexOf("R1") != -1;
+    logger.info(model);
+
     let answer = null;
     const {
-      model: _model,
+      mode: mode,
+      model:inner_model,
       content,
       engineType
     } = messagesPrepare(model, messages, tempature);
 
-       
-    if (deepThink){
+
+    if (model!=""){
       // 请求流
       const metaToken = await acquireMetaToken(token, swapMode);
 
@@ -274,14 +276,14 @@ async function createCompletion(
       const result = await axios.get(`https://metaso.cn/api/searchV2`, {
         params: {
           question: content,
-          mode: model,
+          mode: mode,
           scholarSearchDomain: 'all',
           url:  'https://metaso.cn/',
           lang: 'zh',
           enableMix: 'true',
           newEngine: 'true',
           enableImage: 'true',
-          model: 'ds-r1',
+          model: inner_model,
           "metaso-pc": "pc",
           token: metaToken
         },
@@ -306,15 +308,14 @@ async function createCompletion(
     }
     else{
     // 创建会话
-      const convId = await createConversation(content, _model, engineType, token);
-      
+      const convId = await createConversation(content, mode, engineType, token);
       
       // 请求流
       const stream = await requestStream(content, convId, token);
 
       const streamStartTime = util.timestamp();
       // 接收流为输出文本
-      answer = await receiveStream(model, convId, stream);
+      answer = await receiveStream(mode, convId, stream);
       logger.success(
         `Stream has completed transfer ${util.timestamp() - streamStartTime}ms`
       );
@@ -357,17 +358,18 @@ async function createCompletionStream(
   retryCount = 0
 ) {
 
-  const deepThink = model.indexOf("R1") != -1;
+ 
   return (async () => {
     logger.info(messages);
 
     const {
-      model: _model,
+      mode: mode,
+      model:_model,
       content,
       engineType
     } = messagesPrepare(model, messages, tempature);
     
-      if (deepThink){
+      if (_model!=""){
       // 请求流
       const metaToken = await acquireMetaToken(token, swapMode);
 
@@ -375,14 +377,14 @@ async function createCompletionStream(
       const result = await axios.get(`https://metaso.cn/api/searchV2`, {
         params: {
           question: content,
-          mode: model,
+          mode: mode,
           scholarSearchDomain: 'all',
           url:  'https://metaso.cn/',
           lang: 'zh',
           enableMix: 'true',
           newEngine: 'true',
           enableImage: 'true',
-          model: 'ds-r1',
+          model: _model,
           "metaso-pc": "pc",
           token: metaToken
         },
@@ -409,7 +411,7 @@ async function createCompletionStream(
     }
     else{
       // 创建会话
-      const convId = await createConversation(content, _model, engineType, token);
+      const convId = await createConversation(content, mode, engineType, token);
 
       // 请求流
       const stream = await requestStream(content, convId, token);
@@ -451,38 +453,52 @@ function messagesPrepare(model: string, messages: any[], tempature: number) {
     throw new APIException(EX.API_TEST);
   let content = latestMessage.content;
   let engineType = "";
-  ([model, engineType = ""] = model.split('-'));
+  let mode = "";
+
+  if(model.indexOf("concise") != -1) {
+    mode = "concise";
+  }
+  if(model.indexOf("detail") != -1) {
+    mode = "detail";
+  }
+  if(model.indexOf("research") != -1) {
+    mode = "research";
+  }
   if(content.indexOf('天气') != -1)
     content += '，直接回答';
   // 如果模型名称未遵守预设则检查指令是否存在，如果都没有再以温度为准
   if (!["concise", "detail", "research", "concise"].includes(model)) {
     if (content.indexOf('简洁搜索') != -1) {
-      model = "concise";
+      mode = "concise";
       content = content.replace(/简洁搜索[:|：]?/g, '');
     }
     else if (content.indexOf('深入搜索') != -1) {
-      model = "detail";
+      mode = "detail";
       content = content.replace(/深入搜索[:|：]?/g, '');
     }
     else if (content.indexOf('研究搜索') != -1) {
-      model = "research";
+      mode = "research";
       content = content.replace(/研究搜索[:|：]?/g, '');
     }
     else {
       if (tempature < 0.4)
-        model = "concise";
+        mode = "concise";
       else if (tempature >= 0.4 && tempature < 0.7)
-        model = "detail";
+        mode = "detail";
       else if (tempature >= 0.7)
-        model = "research";
+        mode = "research";
       else
-        model = MODEL_NAME;
+      mode = MODEL_NAME;
     }
   }
   if (/^学术/.test(content)) {
     engineType = "scholar";
     content = content.replace(/^学术/, '');
   }
+  if(model.indexOf("scholar") != -1) {
+    engineType = "scholar";
+  }
+
   if (engineType && !["scholar"].includes(engineType))
     engineType = "";
   const isScholar = engineType == "scholar";
@@ -490,8 +506,17 @@ function messagesPrepare(model: string, messages: any[], tempature: number) {
     'concise': isScholar ? '学术-简洁' : '简洁',
     'detail': isScholar ? '学术-深入' : '深入',
     'research': isScholar ? '学术-研究' : '研究'
-  })[model]}\n搜索内容：${content}`);
+  })[mode]}\n搜索内容：${content}`);
+
+  if(model.indexOf("R1") != -1 || model.indexOf("r1") != -1) {
+    logger.info("启用了长思考")
+    model = "ds-r1"
+  }
+  else{
+    model = ""
+  }
   return {
+    mode,
     model,
     engineType,
     content
@@ -545,6 +570,7 @@ async function receiveStream(model: string, convId: string, stream: any) {
     };
     const parser = createParser((event) => {
       try {
+        logger.info(JSON.stringify(event));
         if (event.type !== "event") return;
         if (event.data == "[DONE]") return;
         // 解析JSON
