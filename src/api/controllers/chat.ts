@@ -464,8 +464,8 @@ function messagesPrepare(model: string, messages: any[], tempature: number) {
   if(model.indexOf("research") != -1) {
     mode = "research";
   }
-  if(content.indexOf('天气') != -1)
-    content += '，直接回答';
+  // if(content.indexOf('天气') != -1)
+  //   content += '，直接回答';
   // 如果模型名称未遵守预设则检查指令是否存在，如果都没有再以温度为准
   if (!["concise", "detail", "research", "concise"].includes(model)) {
     if (content.indexOf('简洁搜索') != -1) {
@@ -544,6 +544,37 @@ function checkResult(result: AxiosResponse) {
   throw new APIException(EX.API_REQUEST_FAILED, errMsg);
 }
 
+
+
+function generateWeatherMarkdown(weatherData) {
+  let markdown = `# 天气信息\n`;
+  markdown += `## 当前天气\n`;
+  markdown += `- 日期: ${weatherData.data.date}\n`;
+  markdown += `- 地点: ${weatherData.data.location}\n`;
+  markdown += `- 当前温度: ${weatherData.data.weatherNow.temp}°C\n`;
+  markdown += `- 天气状况: ${weatherData.data.weatherNow.text}\n`;
+  markdown += `- 风向: ${weatherData.data.weatherNow.windDir}\n`;
+  markdown += `- 风力: ${weatherData.data.weatherNow.windScale}\n\n`;
+
+  markdown += `## 每日天气预报\n`;
+  markdown += `| 日期 | 最高温度 | 最低温度 | 风向 | 风力 |\n`;
+  markdown += `|------|----------|----------|------|------|\n`;
+  weatherData.data.weatherDailies.forEach(daily => {
+      markdown += `| ${daily.time} | ${daily.maxTemp}°C | ${daily.minTemp}°C | ${daily.windDir} | ${daily.windScale} |\n`;
+  });
+  markdown += `\n`;
+
+  markdown += `## 每小时天气预报\n`;
+  markdown += `| 时间 | 温度 |\n`;
+  markdown += `|------|------|\n`;
+  weatherData.data.weatherHourlies.forEach(hourly => {
+      markdown += `| ${hourly.time}时 | ${hourly.temp}°C |\n`;
+  });
+
+  return markdown;
+}
+
+
 /**
  * 从流接收完整的消息内容
  *
@@ -602,6 +633,12 @@ async function receiveStream(model: string, convId: string, stream: any) {
           }
           else{
             data.choices[0].message.content += removeIndexLabel(result.text);
+          }
+        }
+        else if(result.type == "real-time-info"){
+          if( result.infoType && result.infoType == "weather"){
+            let chunk = generateWeatherMarkdown(result) + "\n"
+            data.choices[0].message.content += chunk;
           }
         }
         else if (result.type == "error")
@@ -752,6 +789,26 @@ function createTransStream(
           })}\n\n`;
           !transStream.closed && transStream.write(data);
         }
+      }
+      else if(result.type == "real-time-info"){
+        if( result.infoType && result.infoType == "weather"){
+          let chunk = generateWeatherMarkdown(result) + "\n"
+          const data = `data: ${JSON.stringify({
+            id: convId,
+            model,
+            object: "chat.completion.chunk",
+            choices: [
+              {
+                index: 0,
+                delta: { role: "assistant", content:chunk },
+                finish_reason: null,
+              },
+            ],
+            created,
+          })}\n\n`;
+          !transStream.closed && transStream.write(data);
+       }
+        
       }
       else if (result.type == "error") {
         const data = `data: ${JSON.stringify({
