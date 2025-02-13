@@ -590,7 +590,7 @@ async function receiveStream(model: string, convId: string, stream: any) {
       
             chunk= chunk.replace(regex, (match, capturedNumber) => {
               const extractedNumber = parseInt(capturedNumber, 10);
-              if (extractedNumber >= 0 && extractedNumber < searchResult.length) {
+              if (extractedNumber >= 0 && extractedNumber <= searchResult.length) {
                   const content = searchResult[extractedNumber-1].link;
     
                   return `[[${extractedNumber}]](${content})`;
@@ -610,7 +610,7 @@ async function receiveStream(model: string, convId: string, stream: any) {
           if(model.indexOf("r1")!=-1 || model.indexOf("R1")!=-1){
             searchResult = result.list.map((item)  =>({"title": item.title,"link": item.link? item.link: item.file_meta? item.file_meta.url: "" }));
             logger.info(searchResult)
-            data.choices[0].message.content += result.list.map((item, index)  => `【检索 ${index + 1}】 [${item.title}]((${item.link}))`).join('\n') +"\n";
+            data.choices[0].message.content += result.list.map((item, index)  => `【检索 ${index + 1}】 [${item.title}]((${ item.link? item.link: item.file_meta? item.file_meta.url: "" }))`).join('\n') +"\n";
           }
         }
       } catch (err) {
@@ -703,7 +703,7 @@ function createTransStream(
     
           chunk= chunk.replace(regex, (match, capturedNumber) => {
             const extractedNumber = parseInt(capturedNumber, 10);
-            if (extractedNumber >= 0 && extractedNumber < searchResult.length) {
+            if (extractedNumber >= 0 && extractedNumber <= searchResult.length) {
                 const content = searchResult[extractedNumber-1].link;
   
                 return `[[${extractedNumber}]](${content})`;
@@ -735,7 +735,8 @@ function createTransStream(
         if(model.indexOf("r1")!=-1 || model.indexOf("R1")!=-1){
           searchResult = result.list.map((item)  =>({"title": item.title,"link": item.link? item.link: item.file_meta? item.file_meta.url: "" }));
           logger.info(searchResult)
-          let chunk = result.list.map((item, index)  => `【检索 ${index + 1}】 [${item.title}]((${item.link}))`).join('\n') +"\n";
+          let chunk = result.list.map((item, index)  => `【检索 ${index + 1}】 [${item.title}](${ item.link? item.link: item.file_meta? item.file_meta.url: ""})`).join('\n') +"\n";
+          logger.info(chunk)
           const data = `data: ${JSON.stringify({
             id: convId,
             model,
