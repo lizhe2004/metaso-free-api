@@ -549,12 +549,12 @@ function checkResult(result: AxiosResponse) {
 function generateWeatherMarkdown(weatherData) {
   let markdown = `# 天气信息\n`;
   markdown += `## 当前天气\n`;
-  markdown += `- 日期: ${weatherData.data.date}\n`;
+  markdown += `- 今天日期: ${weatherData.data.date}\n`;
   markdown += `- 地点: ${weatherData.data.location}\n`;
   markdown += `- 当前温度: ${weatherData.data.weatherNow.temp}°C\n`;
-  markdown += `- 天气状况: ${weatherData.data.weatherNow.text}\n`;
-  markdown += `- 风向: ${weatherData.data.weatherNow.windDir}\n`;
-  markdown += `- 风力: ${weatherData.data.weatherNow.windScale}\n\n`;
+  markdown += `- 当前天气状况: ${weatherData.data.weatherNow.text}\n`;
+  markdown += `- 当前风向: ${weatherData.data.weatherNow.windDir}\n`;
+  markdown += `- 当前风力: ${weatherData.data.weatherNow.windScale}\n\n`;
 
   markdown += `## 每日天气预报\n`;
   markdown += `| 日期 | 最高温度 | 最低温度 | 风向 | 风力 |\n`;
@@ -564,7 +564,7 @@ function generateWeatherMarkdown(weatherData) {
   });
   markdown += `\n`;
 
-  markdown += `## 每小时天气预报\n`;
+  markdown += `## 未来24小时天气预报\n`;
   markdown += `| 时间 | 温度 |\n`;
   markdown += `|------|------|\n`;
   weatherData.data.weatherHourlies.forEach(hourly => {
