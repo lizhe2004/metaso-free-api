@@ -268,9 +268,9 @@ async function createCompletion(
     } = messagesPrepare(model, messages, tempature);
 
 
-    if (model!=""){
+    if (inner_model!=""){
       // 请求流
-      const metaToken = await acquireMetaToken(token, swapMode);
+      const metaToken = await acquireMetaToken(token);
 
 
       const result = await axios.get(`https://metaso.cn/api/searchV2`, {
@@ -371,7 +371,7 @@ async function createCompletionStream(
     
       if (_model!=""){
       // 请求流
-      const metaToken = await acquireMetaToken(token, swapMode);
+      const metaToken = await acquireMetaToken(token);
 
 
       const result = await axios.get(`https://metaso.cn/api/searchV2`, {
