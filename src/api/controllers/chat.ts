@@ -284,6 +284,7 @@ async function createCompletion(
           newEngine: 'true',
           enableImage: 'true',
           model: inner_model,
+          "engineType": engineType,
           "metaso-pc": "pc",
           token: metaToken
         },
@@ -384,6 +385,7 @@ async function createCompletionStream(
           enableMix: 'true',
           newEngine: 'true',
           enableImage: 'true',
+          "engineType": engineType,
           model: _model,
           "metaso-pc": "pc",
           token: metaToken
