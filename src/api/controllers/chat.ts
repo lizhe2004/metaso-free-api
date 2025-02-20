@@ -803,13 +803,13 @@ function createTransStream(
       else if (result.type == "step-start") {
         let chunk = ""
         if(result.name == "sub_question"){
-          chunk ="## " + sub_questions[result.extra.index].name + "\n"
+          chunk ="\n\n## " + sub_questions[result.extra.index].name + "\n"
         }
         else if(result.name == "plan"){
           chunk ="开始规划\n\n"
         }
         else if(result.name == "final_answer"){
-          chunk ="开始生成答案\n\n"
+          chunk ="\n\n开始生成答案\n\n"
         }
 
         const data = `data: ${JSON.stringify({
