@@ -464,10 +464,13 @@ function messagesPrepare(model: string, messages: any[], tempature: number) {
   if(model.indexOf("research") != -1) {
     mode = "research";
   }
+  if(model.indexOf("strong-research") != -1) {
+    mode = "strong-research";
+  }
   // if(content.indexOf('天气') != -1)
   //   content += '，直接回答';
   // 如果模型名称未遵守预设则检查指令是否存在，如果都没有再以温度为准
-  if (!["concise", "detail", "research", "concise"].includes(model)) {
+  if (!["concise", "detail", "research", "concise","strong-research"].includes(model)) {
     if (content.indexOf('简洁搜索') != -1) {
       mode = "concise";
       content = content.replace(/简洁搜索[:|：]?/g, '');
@@ -505,7 +508,8 @@ function messagesPrepare(model: string, messages: any[], tempature: number) {
   logger.info(`\n选用模式：${({
     'concise': isScholar ? '学术-简洁' : '简洁',
     'detail': isScholar ? '学术-深入' : '深入',
-    'research': isScholar ? '学术-研究' : '研究'
+    'research': isScholar ? '学术-研究' : '研究',
+    'strong-research': isScholar ? '学术-新版研究' : '新版研究'
   })[mode]}\n搜索内容：${content}`);
 
   if(model.indexOf("R1") != -1 || model.indexOf("r1") != -1) {
@@ -647,7 +651,7 @@ async function receiveStream(model: string, convId: string, stream: any) {
           if(model.indexOf("r1")!=-1 || model.indexOf("R1")!=-1){
             searchResult = result.list.map((item)  =>({"title": item.title,"link": item.link? item.link: item.file_meta? item.file_meta.url: "" }));
             logger.info(searchResult)
-            data.choices[0].message.content += result.list.map((item, index)  => `【检索 ${index + 1}】 [${item.title}]((${ item.link? item.link: item.file_meta? item.file_meta.url: "" }))`).join('\n') +"\n";
+            data.choices[0].message.content += result.list.map((item, index)  => `【检索 ${index + 1}】 [${item.title.replace(/[\\`*_{}[\]()#+$-.!]/g, '\\$&')}](${ encodeURI(item.link? item.link: item.file_meta? item.file_meta.url: "")})`).join('\n') +"\n";
           }
         }
       } catch (err) {
@@ -772,8 +776,10 @@ function createTransStream(
         if(model.indexOf("r1")!=-1 || model.indexOf("R1")!=-1){
           searchResult = result.list.map((item)  =>({"title": item.title,"link": item.link? item.link: item.file_meta? item.file_meta.url: "" }));
           logger.info(searchResult)
-          let chunk = result.list.map((item, index)  => `【检索 ${index + 1}】 [${item.title}](${ item.link? item.link: item.file_meta? item.file_meta.url: ""})`).join('\n') +"\n";
+          let chunk = result.list.map((item, index)  => `【检索 ${index + 1}】 [${item.title.replace(/[\\`*_{}[\]()#+$-.!]/g, '\\$&')}](${ encodeURI(item.link? item.link: item.file_meta? item.file_meta.url: "")})`).join('\n') +"\n";
           logger.info(chunk)
+
+         
           const data = `data: ${JSON.stringify({
             id: convId,
             model,
