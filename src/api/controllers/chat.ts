@@ -686,6 +686,7 @@ function createTransStream(
   // 消息创建时间
   const created = util.unixTimestamp();
   let searchResult = [];
+  let sub_questions = []
   // 创建转换流
   const transStream = new PassThrough();
   !transStream.closed &&
@@ -796,6 +797,63 @@ function createTransStream(
           !transStream.closed && transStream.write(data);
         }
       }
+      else if (result.type == "search-sub-questions") {
+        sub_questions = result.data;
+      }
+      else if (result.type == "step-start") {
+        let chunk = ""
+        if(result.name == "sub_question"){
+          chunk ="## " + sub_questions[result.extra.index].name + "\n"
+        }
+        else if(result.name == "plan"){
+          chunk ="开始规划\n\n"
+        }
+        else if(result.name == "final_answer"){
+          chunk ="开始生成答案\n\n"
+        }
+
+        const data = `data: ${JSON.stringify({
+          id: convId,
+          model,
+          object: "chat.completion.chunk",
+          choices: [
+            {
+              index: 0,
+              delta: { role: "assistant", content:chunk },
+              finish_reason: null,
+            },
+          ],
+          created,
+        })}\n\n`;
+        !transStream.closed && transStream.write(data);
+      }
+      else if (result.type == "step-end") {
+        let chunk = ""
+        if(result.name == "sub_question"){
+          chunk =""
+        }
+        else if(result.name == "plan"){
+          chunk ="\n\n规划结束\n\n"
+        }
+        else if(result.name == "final_answer"){
+          chunk ="\n\n生成答案完成\n\n"
+        }
+
+        const data = `data: ${JSON.stringify({
+          id: convId,
+          model,
+          object: "chat.completion.chunk",
+          choices: [
+            {
+              index: 0,
+              delta: { role: "assistant", content:chunk },
+              finish_reason: null,
+            },
+          ],
+          created,
+        })}\n\n`;
+        !transStream.closed && transStream.write(data);
+      }
       else if(result.type == "real-time-info"){
         if( result.infoType && result.infoType == "weather"){
           let chunk = generateWeatherMarkdown(result) + "\n"
@@ -816,6 +874,33 @@ function createTransStream(
        }
         
       }
+      else if (result.textType=="cot" ){
+        let chunk = ""
+        if ( result.type == "text-start"){
+          chunk = "开始思考\n\n"
+
+        }else if ( result.type == "text-end"){
+          chunk = "思考结束\n\n"
+        }
+
+        const data = `data: ${JSON.stringify({
+          id: convId,
+          model,
+          object: "chat.completion.chunk",
+          choices: [
+            {
+              index: 0,
+              delta: { role: "assistant", content:chunk },
+              finish_reason: null,
+            },
+          ],
+          created,
+        })}\n\n`;
+        !transStream.closed && transStream.write(data);
+        
+
+      }
+      
       else if (result.type == "error") {
         const data = `data: ${JSON.stringify({
           id: convId,
