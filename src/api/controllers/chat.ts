@@ -470,7 +470,7 @@ function messagesPrepare(model: string, messages: any[], tempature: number) {
   // if(content.indexOf('天气') != -1)
   //   content += '，直接回答';
   // 如果模型名称未遵守预设则检查指令是否存在，如果都没有再以温度为准
-  if (!["concise", "detail", "research", "concise","strong-research"].includes(model)) {
+  if (!["concise", "detail", "research", "concise","strong-research"].includes(mode)) {
     if (content.indexOf('简洁搜索') != -1) {
       mode = "concise";
       content = content.replace(/简洁搜索[:|：]?/g, '');
