@@ -653,7 +653,7 @@ async function receiveStream(model: string, convId: string, stream: any) {
           if(model.indexOf("r1")!=-1 || model.indexOf("R1")!=-1){
             searchResult = result.list.map((item)  =>({"title": item.title,"link": item.link? item.link: item.file_meta? item.file_meta.url: "" }));
             logger.info(searchResult)
-            data.choices[0].message.content += "\n" + result.list.map((item, index)  => `【检索 ${index + 1}】 [${item.title.replace(/[\\`*_{}[\]()#+$-.!]/g, '\\$&')}](${ encodeURI(item.link? item.link: item.file_meta? item.file_meta.url: "")})`).join('\n') +"\n";
+            data.choices[0].message.content += "\n" + result.list.map((item, index)  => `【检索 ${index + 1}】 [${item.title.replace(/[\\`*_{}[\]()#+$-.!]/g, '\\$&')}](${ item.link? item.link: item.file_meta? item.file_meta.url: ""})`).join('\n') +"\n";
           }
         }
       } catch (err) {
@@ -779,7 +779,7 @@ function createTransStream(
         if(model.indexOf("r1")!=-1 || model.indexOf("R1")!=-1){
           searchResult = result.list.map((item)  =>({"title": item.title,"link": item.link? item.link: item.file_meta? item.file_meta.url: "" }));
           logger.info(searchResult)
-          let chunk = "\n" + result.list.map((item, index)  => `【检索 ${index + 1}】 [${item.title.replace(/[\\`*_{}[\]()#+$-.!]/g, '\\$&')}](${ encodeURI(item.link? item.link: item.file_meta? item.file_meta.url: "")})`).join('\n') +"\n";
+          let chunk = "\n" + result.list.map((item, index)  => `【检索 ${index + 1}】 [${item.title.replace(/[\\`*_{}[\]()#+$-.!]/g, '\\$&')}](${ item.link? item.link: item.file_meta? item.file_meta.url: ""})`).join('\n') +"\n";
           logger.info(chunk)
 
          
